@@ -1,39 +1,3 @@
-## Installation and Verification
-
-The scope of the new installer-provisioned infrastructure (IPI) OpenShift 4
-installation is purposefully narrow. It is designed for simplicity and
-ensured success. Many of the items and configurations that were previously
-handled by the installer are now expected to be "Day 2" operations, performed
-just after the installation of the control plane and basic workers completes.
-The installer provides a guided experience for provisioning the cluster on a
-particular platform.
-
-This IPI installation has already been performed for you, and the cluster is
-in its basic, default state.
-
-### Logging in
-To inspect the cluster installation, you can simply SSH to the bastion host where it was installed on like so:
-
-[source,bash,role="execute"]
-----
-ssh -l {{ SSH_USERNAME }} {{ BASTION_FQDN }} -o ServerAliveInterval=120
-----
-
-Here is your ssh password:
-
-[source,bash,role="copypaste"]
-----
-{{ SSH_PASSWORD }}
-----
-
-You'll notice that there is a 4-digit alphanumeric string (eg: f4a3) in the hostname. This
-string is your `GUID`. Since you will often use `GUID`, it makes sense to
-export it as an environment variable:
-
-[source,bash,role="execute"]
-----
-export GUID=`hostname | cut -d. -f2`
-----
 
 ### Master Components
 
@@ -54,7 +18,6 @@ Common things that interact with the Kubernetes API server are:
 All interactions with the API server are secured using TLS. In addition, all
 API calls must be authenticated (the user is who they say they are) and
 authorized (the user has rights to make the requested API calls).
-
 
 #### Data Store
 The OpenShift Data Store (etcd) stores the persistent master state while
@@ -100,7 +63,7 @@ console (which requires a password).
 
 If you want additional users to be able to authenticate to and use the
 cluster, you need to configure your desired authentication mechanisms using
-CustomResources and Operators as previously discussed. LDAP-based
+CustomResources and Operators as previously discussed. HTPasswd-based
 authentication will be configured as one of the lab exercises.
 
 ### Verifying the Installation
@@ -109,59 +72,17 @@ of your interaction with OpenShift will be from the command line. The `oc`
 program is a command line interface that talks to the OpenShift API.
 
 #### Login to OpenShift
-When the installation completed, the installer left some artifacts that
-contain the various URLs and passwords required to access the environment.
-The installation program was run under the `ec2-user` account.
+We'll be using the {{ SYSTEMADMINUSER }} user that was already created. The password is dynamically created and can be found under <ocp install path>/auth/kubeadmin-password, in your case the password is: {{ SYSTEMADMINPASS }}
+
+Now log in using that password:
 
 [source,bash,role="execute"]
 ----
-ls -al ~/cluster-$GUID
+oc login -u {{ SYSTEMADMINUSER }} -p {{ SYSTEMADMINPASS }}
 ----
 
-You'll see something like the following:
 
-----
-total 3348
-drwxrwxr-x. 4 ec2-user ec2-user     199 May  3 08:13 .
-drwx------. 7 lab-user users        134 May  3 13:46 ..
-drwxr-xr-x. 2 ec2-user ec2-user      50 May  3 08:00 auth
--rw-r--r--. 1 ec2-user ec2-user     271 May  3 07:54 metadata.json
--rw-rw-r--. 1 ec2-user ec2-user  576663 May  3 08:18 .openshift_install.log
--rw-r--r--. 1 ec2-user ec2-user 2351869 May  3 08:00 .openshift_install_state.json
--rw-r--r--. 1 ec2-user ec2-user     623 May  3 07:54 terraform.aws.auto.tfvars
--rw-rw-r--. 1 ec2-user ec2-user  170852 May  3 08:13 terraform.tfstate
--rw-r--r--. 1 ec2-user ec2-user  312196 May  3 07:54 terraform.tfvars
-drwxr-xr-x. 2 ec2-user ec2-user      62 May  3 07:54 tls
-----
-
-The OpenShift 4 IPI installation embeds Terraform in order to create some of
-the cloud provider resources. You can see some of its outputs here. The
-important file right now is the `.openshift_install.log`. Its last few lines
-contain the relevant output to figure out how to access your environment:
-
-[source,bash,role="execute"]
-----
-tail -n5 ~/cluster-$GUID/.openshift_install.log
-----
-
-You will see something like the following::
-
-----
-time="2019-04-08T14:49:34Z" level=info msg="Install complete!"
-time="2019-04-08T14:49:34Z" level=info msg="Run 'export KUBECONFIG=/home/ec2-user/cluster-f4a3/auth/kubeconfig' to manage the cluster with 'oc', the OpenShift CLI."
-time="2019-04-08T14:49:34Z" level=info msg="The cluster is ready when 'oc login -u kubeadmin -p SxUr2-tQ2py-c6jq2-YtjW3' succeeds (wait a few minutes)."
-time="2019-04-08T14:49:34Z" level=info msg="Access the OpenShift web-console here: https://console-openshift-console.apps.cluster-f4a3.f4a3.openshiftworkshop.com"
-time="2019-04-08T14:49:34Z" level=info msg="Login to the console with user: kubeadmin, password: SxUr2-tQ2py-c6jq2-YtjW3"
-----
-
-The installation was run as a different system user, and the artifacts folder
-is read-only mounted into your `lab-user` folder. While the installer has
-fortunately given you a convenient `export` command to run, you don't have
-write permissions to the path that it shows. The `oc` command will try to
-write to the `KUBECONFIG` file, which it can't, so you'll get errors later if you try it.
-
-Our installation process has actually already copied the config you need to
-`~/.kube/config`, so you are already logged in. Try the following:
+Try the following:
 
 [source,bash,role="execute"]
 ----
@@ -260,12 +181,6 @@ control+click the link:
 
 {{ MASTER_URL }}
 
-#### You will now exit the ssh session
-[source,role="execute"]
-----
-exit
-----
-If you accidentally hit exit more than once and connection to the console closed, refresh the webpage to reconnect.
 
 [WARNING]
 ====

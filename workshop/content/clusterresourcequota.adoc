@@ -1,10 +1,5 @@
 ## Cluster resource quotas
 
-[WARNING]
-====
-Before continuing, make sure you've done the LDAP lab.
-====
-
 In a previous lab, you worked with quotas and saw how they could be applied to projects. You also set up default quotas, so anytime someone requests a new project; they get assigned the default quota. These project quotas are great for maintaining control over the resources in your cluster.
 
 But what if you want to apply a quota not to individual projects, but accross projects?
@@ -19,19 +14,19 @@ In this lab, we will be exploring both use cases.
 
 #### Setting quota per user
 
-In order to set a `clusterresourcequota` to a user you need to be `kubeadmin`
+In order to set a `clusterresourcequota` to a user you need to be `{{ SYSTEMADMINUSER }}`
 
 [source,bash,role="execute"]
 ----
-oc login -u kubeadmin -p {{ KUBEADMIN_PASSWORD }}
+oc login -u {{ SYSTEMADMINUSER }} -p {{ SYSTEMADMINPASS }}
 ----
 
-Now, set a quota for the `normaluser1`. We will be using the `annotation` key of `openshift.io/requester=` to identify the projects that will have these quotas assigned to. For this exercise, we will set a hard quota against creating more than 10 pods.
+Now, set a quota for the `{{ REGULARUSER }}`. We will be using the `annotation` key of `openshift.io/requester=` to identify the projects that will have these quotas assigned to. For this exercise, we will set a hard quota against creating more than 10 pods.
 
 [source,bash,role="execute"]
 ----
-oc create clusterquota for-user-normaluser1 \
-    --project-annotation-selector openshift.io/requester=normaluser1 \
+oc create clusterquota for-user-{{ REGULARUSER }} \
+    --project-annotation-selector openshift.io/requester={{ REGULARUSER }} \
     --hard pods=10
 ----
 
@@ -44,7 +39,7 @@ View the configuration.
 
 [source,bash,role="execute"]
 ----
-oc get clusterresourcequotas for-user-normaluser1 -o yaml
+oc get clusterresourcequotas for-user-{{ REGULARUSER }} -o yaml
 ----
 
 The configuration should look something like this:
@@ -56,9 +51,9 @@ kind: ClusterResourceQuota
 metadata:
   creationTimestamp: "2019-11-22T01:29:06Z"
   generation: 1
-  name: for-user-normaluser1
+  name: for-user-{{ REGULARUSER }}
   resourceVersion: "73824"
-  selfLink: /apis/quota.openshift.io/v1/clusterresourcequotas/for-user-normaluser1
+  selfLink: /apis/quota.openshift.io/v1/clusterresourcequotas/for-user-{{ REGULARUSER }}
   uid: 79764862-0cc7-11ea-bba7-0640f541f946
 spec:
   quota:
@@ -66,16 +61,16 @@ spec:
       pods: "10"
   selector:
     annotations:
-      openshift.io/requester: normaluser1
+      openshift.io/requester: {{ REGULARUSER }}
 ----
 
-This user, `normaluser1`, can create no more than 10 pods accross all the projects he creates. This applies only to projects that he as created (based on the `openshift.io/requester: normaluser1` annotation), not any projects he has access to. More on this later.
+This user, `{{ REGULARUSER }}`, can create no more than 10 pods accross all the projects he creates. This applies only to projects that he as created (based on the `openshift.io/requester: {{ REGULARUSER }}` annotation), not any projects he has access to. More on this later.
 
-Now, login as `normaluser1`
+Now, login as `{{ REGULARUSER }}`
 
 [source,bash,role="execute"]
 ----
-oc login -u normaluser1 -p openshift
+oc login -u {{ REGULARUSER }} -p openshift
 ----
 
 List all your current projects
@@ -126,30 +121,30 @@ NAME           READY   STATUS    RESTARTS   AGE
 php2-1-s5756   1/1     Running   0          2m15s
 ----
 
-Now we can check the quota by first becoming `kubeadmin`:
+Now we can check the quota by first becoming `{{ SYSTEMADMINUSER }}`:
 
 [source,bash,role="execute"]
 ----
-oc login -u kubeadmin -p {{ KUBEADMIN_PASSWORD }}
+oc login -u {{ SYSTEMADMINUSER }} -p {{ SYSTEMADMINPASS }}
 ----
 
-Now run `oc describe clusterresourcequotas for-user-normaluser1` to see the status of the quota:
+Now run `oc describe clusterresourcequotas for-user-{{ REGULARUSER }}` to see the status of the quota:
 
 [source,bash,role="execute"]
 ----
-oc describe clusterresourcequotas for-user-normaluser1
+oc describe clusterresourcequotas for-user-{{ REGULARUSER }}
 ----
 
 You should see the following output:
 
 ----
-Name:		for-user-normaluser1
+Name:		for-user-{{ REGULARUSER }}
 Created:	22 minutes ago
 Labels:		<none>
 Annotations:	<none>
 Namespace Selector: ["welcome1" "welcome2"]
 Label Selector: 
-AnnotationSelector: map[openshift.io/requester:normaluser1]
+AnnotationSelector: map[openshift.io/requester:{{ REGULARUSER }}]
 Resource	Used	Hard
 --------	----	----
 pods		2	10
@@ -172,7 +167,7 @@ metadata:
   annotations:
     openshift.io/description: ""
     openshift.io/display-name: ""
-    openshift.io/requester: normaluser1
+    openshift.io/requester: {{ REGULARUSER }}
     openshift.io/sa.scc.mcs: s0:c26,c20
     openshift.io/sa.scc.supplemental-groups: 1000690000/10000
     openshift.io/sa.scc.uid-range: 1000690000/10000
@@ -188,12 +183,12 @@ status:
   phase: Active
 ----
 
-Now as `normaluser1`, try to scale your apps beyond 10 pods:
+Now as `{{ REGULARUSER }}`, try to scale your apps beyond 10 pods:
 
 
 [source,bash,role="execute"]
 ----
-oc login -u normaluser1 -p openshift
+oc login -u {{ REGULARUSER }} -p openshift
 oc scale dc/php1 -n welcome1 --replicas=5
 oc scale dc/php2 -n welcome2 --replicas=6
 ----
@@ -217,27 +212,27 @@ oc get events -n welcome2 | grep "Error creating" | head -1
 You should see a message like the following.
 
 ----
-3m31s       Warning   FailedCreate                  replicationcontroller/php2-1   Error creating: pods "php2-1-wn22s" is forbidden: exceeded quota: for-user-normaluser1, requested: pods=1, used: pods=10, limited: pods=10
+3m31s       Warning   FailedCreate                  replicationcontroller/php2-1   Error creating: pods "php2-1-wn22s" is forbidden: exceeded quota: for-user-{{ REGULARUSER }}, requested: pods=1, used: pods=10, limited: pods=10
 ----
 
-To see the status, switch to the `kubeadmin` account and run the `describe` command from before:
+To see the status, switch to the `{{ SYSTEMADMINUSER }}` account and run the `describe` command from before:
 
 [source,bash,role="execute"]
 ----
-oc login -u kubeadmin -p {{ KUBEADMIN_PASSWORD }}
-oc describe clusterresourcequotas for-user-normaluser1
+oc login -u {{ SYSTEMADMINUSER }} -p {{ SYSTEMADMINPASS }}
+oc describe clusterresourcequotas for-user-{{ REGULARUSER }}
 ----
 
 You should see that the hard pod limit has been reached
 
 ----
-Name:		for-user-normaluser1
+Name:		for-user-{{ REGULARUSER }}
 Created:	45 minutes ago
 Labels:		<none>
 Annotations:	<none>
 Namespace Selector: ["welcome1" "welcome2"]
 Label Selector: 
-AnnotationSelector: map[openshift.io/requester:normaluser1]
+AnnotationSelector: map[openshift.io/requester:{{ REGULARUSER }}]
 Resource	Used	Hard
 --------	----	----
 pods		10	10
@@ -245,11 +240,11 @@ pods		10	10
 
 #### Setting quota by label
 
-In order to set a quota by application stacks that may span multiple projects, you'll have to use labels to identify the project. First, make sure you're `kubeadmin`
+In order to set a quota by application stacks that may span multiple projects, you'll have to use labels to identify the project. First, make sure you're `{{ SYSTEMADMINUSER }}`
 
 [source,bash,role="execute"]
 ----
-oc login -u kubeadmin -p {{ KUBEADMIN_PASSWORD }}
+oc login -u {{ SYSTEMADMINUSER }} -p {{ SYSTEMADMINPASS }}
 ----
 
 Now set a quota based on a label. For this lab we will use `appstack=pricelist` key/value based label to identify projects.
@@ -269,12 +264,12 @@ oc adm new-project pricelist-frontend
 oc adm new-project pricelist-backend
 ----
 
-Assign the `edit` role to the user `normaluser1` for these two projects:
+Assign the `edit` role to the user `{{ REGULARUSER }}` for these two projects:
 
 [source,bash,role="execute"]
 ----
-oc adm policy add-role-to-user edit normaluser1 -n pricelist-frontend
-oc adm policy add-role-to-user edit normaluser1 -n pricelist-backend
+oc adm policy add-role-to-user edit {{ REGULARUSER }} -n pricelist-frontend
+oc adm policy add-role-to-user edit {{ REGULARUSER }} -n pricelist-backend
 ----
 
 To identify these two projects to belonging to the `pricelist` application stack, you will need to label the corresponding namespace:
@@ -307,20 +302,20 @@ Resource	Used	Hard
 pods		0	5
 ----
 
-Login as `normaluser1` and create the applications in their respective projects:
+Login as `{{ REGULARUSER }}` and create the applications in their respective projects:
 
 [source,bash,role="execute"]
 ----
-oc login -u normaluser1 -p openshift
+oc login -u {{ REGULARUSER }} -p openshift
 oc new-app -n pricelist-frontend --name frontend quay.io/redhatworkshops/pricelist:frontend
 oc new-app -n pricelist-backend --name backend quay.io/redhatworkshops/pricelist:backend
 ----
 
-Check the status of the quota by logging in as `kubeadmin` and running the `describe` command:
+Check the status of the quota by logging in as `{{ SYSTEMADMINUSER }}` and running the `describe` command:
 
 [source,bash,role="execute"]
 ----
-oc login -u kubeadmin -p {{ KUBEADMIN_PASSWORD }}
+oc login -u {{ SYSTEMADMINUSER }} -p {{ SYSTEMADMINPASS }}
 oc describe clusterresourcequotas for-pricelist
 ----
 
@@ -341,14 +336,14 @@ pods		2	5
 
 [NOTE]
 ====
-The user `normaluser1` can create more pods because `pricelist-frontend` and `pricelist-backend` were assigned to the user by `kubeadmin`. They don't have the `openshift.io/requester=normaluser1` annotation since `normaluser1` didn't create them. You can already see how you can mix and match quota polices to fit your envrionment.
+The user `{{ REGULARUSER }}` can create more pods because `pricelist-frontend` and `pricelist-backend` were assigned to the user by `{{ SYSTEMADMINUSER }}`. They don't have the `openshift.io/requester={{ REGULARUSER }}` annotation since `{{ REGULARUSER }}` didn't create them. You can already see how you can mix and match quota polices to fit your envrionment.
 ====
 
-Test this by logging back in as `normaluser1` and try to scale the applications beyond 5 pods total.
+Test this by logging back in as `{{ REGULARUSER }}` and try to scale the applications beyond 5 pods total.
 
 [source,bash,role="execute"]
 ----
-oc login -u normaluser1 -p openshift
+oc login -u {{ REGULARUSER }} -p openshift
 oc scale -n pricelist-frontend dc/frontend --replicas=3
 oc scale -n pricelist-backend dc/backend --replicas=3
 ----
@@ -369,18 +364,18 @@ The output should be like the other exercise:
 
 #### Clean Up
 
-Clean up the work you did by first becoming `kubeadmin`:
+Clean up the work you did by first becoming `{{ SYSTEMADMINUSER }}`:
 
 [source,bash,role="execute"]
 ----
-oc login -u kubeadmin -p {{ KUBEADMIN_PASSWORD }}
+oc login -u {{ SYSTEMADMINUSER }} -p {{ SYSTEMADMINPASS }}
 ----
 
 These quotas may interfere with other labs; so delete both of the `clusterresourcequota` we created in this lab:
 
 [source,bash,role="execute"]
 ----
-oc delete clusterresourcequotas for-pricelist for-user-normaluser1
+oc delete clusterresourcequotas for-pricelist for-user-{{ REGULARUSER }}
 ----
 
 Also delete the projects we created for this lab:
@@ -390,9 +385,9 @@ Also delete the projects we created for this lab:
 oc delete projects pricelist-backend pricelist-frontend welcome1 welcome2
 ----
 
-Make sure you login as `kubeadmin` for the next lab.
+Make sure you login as `{{ SYSTEMADMINUSER }}` for the next lab.
 
 [source,bash,role="execute"]
 ----
-oc login -u kubeadmin -p {{ KUBEADMIN_PASSWORD }}
+oc login -u {{ SYSTEMADMINUSER }} -p {{ SYSTEMADMINPASS }}
 ----

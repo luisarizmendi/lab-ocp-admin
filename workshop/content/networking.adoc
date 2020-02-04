@@ -26,7 +26,7 @@ cause errors in the scripts in this lab.
 
 [source,bash,role="execute"]
 ----
-oc project default
+oc project app-management
 ----
 
 ### Execute the Creation Script
@@ -34,11 +34,106 @@ Only users with project or cluster administration privileges can manipulate *Pro
 networks.
 
 Then, execute a script that we have prepared for you. It will create two
-*Projects* and then deploy a *DeploymentConfig* with a *Pod* for you:
+*Projects* and then deploy a *DeploymentConfig* with a *Pod* for you.
+
+First prepare the template:
+
 
 [source,bash,role="execute"]
 ----
-bash {{ HOME_PATH }}/support/create-net-projects.sh
+cat <<EOF > netproj-template.yaml
+apiVersion: v1
+kind: Template
+metadata:
+  name: cluster-deployment-customimageset-template
+
+parameters:
+- name: IMAGE
+  displayName: Container Image
+  description: The container image to use for the deployment
+  required: true
+
+- name: NAMESPACE
+  displayName: Namespace
+  description: Namespace to deploy objects
+  required: true
+
+objects:
+- apiVersion: v1
+  kind: Namespace
+  metadata:
+    labels:
+      name: "\${NAMESPACE}"
+    name: "\${NAMESPACE}"
+
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    name: ose
+    labels:
+      run: ose
+  spec:
+    strategy:
+      type: Rolling
+      rollingParams:
+        updatePeriodSeconds: 1
+        intervalSeconds: 1
+        timeoutSeconds: 600
+        maxUnavailable: 25%
+        maxSurge: 25%
+      resources:
+    triggers:
+      - type: ConfigChange
+    replicas: 1
+    test: false
+    selector:
+      run: ose
+    template:
+      metadata:
+        creationTimestamp: null
+        labels:
+          run: ose
+      spec:
+        containers:
+          - name: ose
+            image: '\${IMAGE}'
+            env:
+            - name: REGISTRY_OPENSHIFT_SERVER_ADDR
+              value: 10.0.0.1
+            resources:
+            terminationMessagePath: /dev/termination-log
+            imagePullPolicy: IfNotPresent
+            ports:
+            - containerPort: 5000
+              protocol: TCP
+            readinessProbe:
+              failureThreshold: 3
+              tcpSocket:
+                port: 5000
+              periodSeconds: 10
+              successThreshold: 1
+              timeoutSeconds: 5
+            livenessProbe:
+              failureThreshold: 3
+              tcpSocket:
+                port: 5000
+              initialDelaySeconds: 10
+              periodSeconds: 10
+              successThreshold: 1
+              timeoutSeconds: 5
+        restartPolicy: Always
+        terminationGracePeriodSeconds: 30
+        dnsPolicy: ClusterFirst
+        securityContext:
+EOF
+----
+
+[source,bash,role="execute"]
+----
+image=$(oc get deployments -n openshift-image-registry image-registry --template '{{ range $x := .spec.template.spec.containers  }} {{- $x.image -}} {{ end }}')
+
+oc process -f netproj-template.yaml NAMESPACE=netproj-a IMAGE="$image" | oc apply -n netproj-a -f -
+oc process -f netproj-template.yaml NAMESPACE=netproj-b IMAGE="$image" | oc apply -n netproj-b -f -
 ----
 
 ### Examine the created infrastructure
@@ -80,11 +175,65 @@ connect to TCP port 5000 of the pod in the `netproj-b` *Project*.
 Now that you have some projects and pods, let's test the connectivity between
 the pod in the `netproj-a` *Project* and the pod in the `netproj-b` *Project*.
 
-To test connectivity between the two pods, run:
+To test connectivity between the two pods a bash script can be created:
+
 
 [source,bash,role="execute"]
 ----
-bash {{ HOME_PATH }}/support/test-connectivity.sh
+cat <<EOF > test-connectivity.sh
+#!/bin/bash
+
+normal_color=\$(echo -e "\e[0m")
+red_color=\$(echo -e "\e[31m")
+green_color=\$(echo -e "\e[32m")
+max_tries=3
+sleep_between_tries=1
+
+
+echo -n "Getting Pod B's IP... "
+pod_b_ip=\$(oc get pod -n netproj-b \$(oc get pod -n netproj-b | grep -v deploy | awk '/ose-/ {print \$1}') -o jsonpath='{.status.podIP}{"\n"}')
+echo \$pod_b_ip
+
+
+echo -n "Getting Pod A's Name... "
+pod_a_name=\$(oc get pod -n netproj-a | grep -v deploy | awk '/ose-/ {print \$1}')
+echo \$pod_a_name
+
+
+echo -n "Checking connectivity between Pod A and Pod B..."
+
+
+i=1
+while [ \$i -le \${max_tries} ]; do
+  if [ \$i -gt 1 ]; then
+    # Don't sleep on first loop
+    echo -n "."
+    sleep \${sleep_between_tries}
+  fi
+
+  if oc exec -n netproj-a \$pod_a_name -- timeout 2 bash -c "</dev/tcp/\$pod_b_ip/5000" 2>/dev/null ; then
+    break
+  fi
+
+  i=\$((i + 1))
+done
+
+if [ \$i -ge \${max_tries} ] ; then
+  # Failed the maximum amount of times.
+  echo " \${red_color}FAILED!\${normal_color}"
+  exit 1
+else
+  echo " \${green_color}worked\${normal_color}"
+fi
+EOF
+----
+
+
+Try the new script:
+
+[source,bash,role="execute"]
+----
+bash test-connectivity.sh
 ----
 
 You will see something like the following:
@@ -111,8 +260,9 @@ For example, the following restricts all access to all pods in a *Project*
 where this `NetworkPolicy` CR is applied. This is the equivalent of a `DenyAll`
 default rule on a firewall:
 
-[source,yaml]
+[source,bash,role="execute"]
 ----
+cat <<EOF > network-policy-block-all.yaml
 kind: NetworkPolicy
 apiVersion: networking.k8s.io/v1
 metadata:
@@ -120,6 +270,7 @@ metadata:
 spec:
   podSelector:
   ingress: []
+EOF
 ----
 
 Note that the `podSelector` is empty, which means that this will apply to all
@@ -132,7 +283,7 @@ above NetworkPolicy CR with:
 
 [source,bash,role="execute"]
 ----
-oc create -n netproj-b -f {{ HOME_PATH }}/support/network-policy-block-all.yaml
+oc create -n netproj-b -f network-policy-block-all.yaml
 ----
 
 ### Test Connectivity #2 (should fail)
@@ -144,7 +295,7 @@ Test by running:
 
 [source,bash,role="execute"]
 ----
-bash {{ HOME_PATH }}/support/test-connectivity.sh
+bash test-connectivity.sh
 ----
 
 You will see something like the following:
@@ -171,8 +322,9 @@ with the label `run: ose`. The pod in the `netproj-b` project has this label.
 The ingress section specifically allows this access from all projects that
 have the label `name: netproj-a`.
 
-[source,yaml]
+[source,bash,role="execute"]
 ----
+cat <<EOF > network-policy-allow-all-from-netproj-a.yaml
 # allow access to TCP port 5000 for pods with the label "run: ose" specifically
 # from projects with the label "name: netproj-a".
 kind: NetworkPolicy
@@ -191,6 +343,7 @@ spec:
     - namespaceSelector:
         matchLabels:
           name: netproj-a
+EOF
 ----
 
 Note that the `podSelector` is where the local project's pods are matched
@@ -205,7 +358,7 @@ To allow access to the pod in the `netproj-b` *Project* from all pods in the
 
 [source,bash,role="execute"]
 ----
-oc create -n netproj-b -f {{ HOME_PATH }}/support/network-policy-allow-all-from-netproj-a.yaml
+oc create -n netproj-b -f network-policy-allow-all-from-netproj-a.yaml
 ----
 
 ### Test Connectivity #3 (should work again)
@@ -217,7 +370,7 @@ Test by running:
 
 [source,bash,role="execute"]
 ----
-bash {{ HOME_PATH }}/support/test-connectivity.sh
+bash test-connectivity.sh
 ----
 
 You will see something like the following:

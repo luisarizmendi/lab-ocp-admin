@@ -1,10 +1,5 @@
 ## Disabling Project Self-Provisioning
 
-[WARNING]
-====
-Before continuing, make sure you've done the LDAP lab.
-====
-
 OpenShift, by default, allows authenticated users to create *Projects* to
 loggically house their applications. This feature enables admins to provide a
 "self service" feature that was popularized by the advent of the "PaaS"
@@ -45,18 +40,18 @@ Kubernetes Namespace.
 
 #### Examine the Clusterrolebinding
 In order to examine the `clusterrolebinding` for `self-provisioners`; you
-need to be *kubeadmin*.
+need to be *{{ SYSTEMADMINUSER }}*.
 
 [NOTE]
 ====
 You could also use the serviceaccount user that we've used in previous labs.
-Since `kubeadmin` and the service account user both have the `cluster-admin`
+Since `{{ SYSTEMADMINUSER }}` and the service account user both have the `cluster-admin`
 role, it really doesn't matter.
 ====
 
 [source,bash,role="execute"]
 ----
-oc login -u kubeadmin -p {{ KUBEADMIN_PASSWORD }}
+oc login -u {{ SYSTEMADMINUSER }} -p {{ SYSTEMADMINPASS }}
 ----
 
 View the `self-provisioners` cluster role binding usage by running the `oc describe` command:
@@ -172,12 +167,12 @@ roleRef:
   name: self-provisioner
 ----
 
-Test this by logging in as `fancyuser1` and try to create a project.
+Test this by logging in as `{{ REGULARUSER }}` and try to create a project.
 
 [source,bash,role="execute"]
 ----
-oc login -u fancyuser1 -p openshift
-oc new-project fancyuserproject
+oc login {{ REGULARUSER }} -p {{ REGULARPASS }}
+oc new-project {{ SYSTEMADMINUSER }}project
 ----
 
 You should see an error message:
@@ -186,11 +181,11 @@ You should see an error message:
 Error from server (Forbidden): You may not request a new project via this API.
 ----
 
-Login as the `kubeadmin` user for the next exercise.
+Login as the `{{ SYSTEMADMINUSER }}` user for the next exercise.
 
 [source,bash,role="execute"]
 ----
-oc login -u kubeadmin -p {{ KUBEADMIN_PASSWORD }}
+oc login -u {{ SYSTEMADMINUSER }} -p {{ SYSTEMADMINPASS }}
 ----
 
 #### Customizing the request message
@@ -214,9 +209,10 @@ this by becoming `fancyuser1` and try to create a project.
 
 [source,bash,role="execute"]
 ----
-oc login -u fancyuser1 -p openshift
-oc new-project fancyuserproject
+oc login {{ REGULARUSER }} -p {{ REGULARPASS }}
+oc new-project {{ SYSTEMADMINUSER }}project
 ----
+
 
 You should see the following message:
 
@@ -230,16 +226,16 @@ moments and try again.
 
 [source,bash,role="execute"]
 ----
-oc new-project fancyuserproject
+oc new-project {{ SYSTEMADMINUSER }}project
 ----
 
 #### Clean Up
 
-Make sure you login as `kubeadmin` for the next lab.
+Make sure you login as `{{ SYSTEMADMINUSER }}` for the next lab.
 
 [source,bash,role="execute"]
 ----
-oc login -u kubeadmin -p {{ KUBEADMIN_PASSWORD }}
+oc login -u {{ SYSTEMADMINUSER }} -p {{ SYSTEMADMINPASS }}
 ----
 
 Other labs may require the `self-provisioners` role, so let's undo what we did:

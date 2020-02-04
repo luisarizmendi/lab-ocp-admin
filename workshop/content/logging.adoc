@@ -65,9 +65,9 @@ OpenShift Logging will be run from within its own namespace
 be created before logging may be installed. The namespace is represented in
 yaml format as:
 
-[source,yaml]
-.openshift_logging_namespace.yaml
+[source,bash,role="execute"]
 ----
+cat <<EOF > openshift_logging_namespace.yaml
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -77,13 +77,14 @@ metadata:
   labels:
     openshift.io/cluster-logging: "true"
     openshift.io/cluster-monitoring: "true"
+EOF
 ----
 
 To create the namespace, run the following command:
 
 [source,bash,role="execute"]
 ----
-oc create -f {{ HOME_PATH }}/support/openshift_logging_namespace.yaml
+oc create -f openshift_logging_namespace.yaml
 ----
 
 

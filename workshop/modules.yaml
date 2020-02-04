@@ -31,17 +31,17 @@ modules:
     name: Disabling Project Self-Provisioning
   clusterresourcequota:
     name: Cluster Resource Quotas
+  node-maintenance:
+    name: Node Maintenance
 config:
     template_engine: liquid.js  
     vars:
-      - name: SSH_PASSWORD
-      - name: SSH_USERNAME
-      - name: ENVIRONMENT
-        value: "Amazon Web Services"
-      - name: API_URL
-      - name: MASTER_URL
-      - name: KUBEADMIN_PASSWORD
-      - name: BASTION_FQDN
-      - name: GUID
-      - name: ROUTE_SUBDOMAIN
-      - name: HOME_PATH
+      - name: SYSTEMADMINUSER
+        value: "clusteradmin"
+      - name: SYSTEMADMINPASS
+        value: "redhat"
+      - name: REGULARUSER
+        value: "user1"
+      - name: REGULARPASS
+        value: "redhat"
+

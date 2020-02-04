@@ -21,12 +21,12 @@ Container Platform clusters.
 +
 [source,role="copypaste"]
 ----
-kubeadmin
+{{ SYSTEMADMINUSER }}
 ----
 +
 [source,role="copypaste"]
 ----
-{{ KUBEADMIN_PASSWORD }}
+{{ SYSTEMADMINPASS }}
 ----
 +
 [WARNING]
@@ -120,12 +120,12 @@ within OpenShift, including the Grafana dashboard.
 +
 [source,role="copypaste"]
 ----
-kubeadmin
+{{ SYSTEMADMINUSER }}
 ----
 +
 [source,role="copypaste"]
 ----
-{{ KUBEADMIN_PASSWORD }}
+{{ SYSTEMADMINPASS }}
 ----
 +
 1. On the "Authorize Access" page, click the "Allow selected permissions" button.

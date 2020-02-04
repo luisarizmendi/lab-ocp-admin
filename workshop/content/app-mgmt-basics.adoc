@@ -693,7 +693,8 @@ test it using `curl`:
 
 [source,bash,role="execute"]
 ----
-curl mapit-app-management.{{ ROUTE_SUBDOMAIN }}/health
+ROUTE=$(oc get route | awk '{print $2}')
+curl http://$ROUTE/health
 ----
 
 You will get some JSON as a response:

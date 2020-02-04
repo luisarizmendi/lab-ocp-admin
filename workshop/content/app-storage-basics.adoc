@@ -102,8 +102,7 @@ You will see there is now both `Mounts` and `Volumes` details about the new stor
 But what is happening under the covers?
 
 ### Storage Classes
-When OpenShift 4 was first installed, a dynamic storage provider for AWS EBS
-was configured. You can see this `StorageClass` with the following:
+An StorageClass was defined as a pre-requistite for this workshop. You can see this `StorageClass` with the following:
 
 [source,bash,role="execute"]
 ----
@@ -118,9 +117,7 @@ gp2 (default)   kubernetes.io/aws-ebs   4d4h
 ----
 
 Any time a request for a volume is made (`PersistentVolumeClaim`) that
-doesn't specify a `StorageClass`, the default will be used. In this case, the
-default is an EBS provisioner that will create an EBS GP2 volume of the
-requested size (in our example, 1Gi).
+doesn't specify a `StorageClass`, the default will be used. 
 
 ### Persistent Volume (Claims)
 The command you ran earlier referenced a `claim`. Storage in a Kubernetes

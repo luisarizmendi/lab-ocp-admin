@@ -69,14 +69,130 @@ exercises.
 
 
 #### Modify the Project Request Template
-You won't actually have to make template changes in this lab -- we've made them
-for you already. Use `cat`, `less`, or your favorite editor to view the modified
+Create a modified version of this template, including quota and limits:
 *Project Request Template*:
 
 [source,bash,role="execute"]
 ----
-cat {{ HOME_PATH }}/support/project_request_template.yaml
+cat <<EOF > project_request_template.yaml
+apiVersion: v1
+kind: Template
+metadata:
+  creationTimestamp: null
+  name: project-request
+objects:
+- apiVersion: v1
+  kind: Project
+  metadata:
+    annotations:
+      openshift.io/description: \${PROJECT_DESCRIPTION}
+      openshift.io/display-name: \${PROJECT_DISPLAYNAME}
+      openshift.io/requester: \${PROJECT_REQUESTING_USER}
+    creationTimestamp: null
+    name: \${PROJECT_NAME}
+  spec: {}
+  status: {}
+- apiVersion: v1
+  kind: ResourceQuota
+  metadata:
+    name: \${PROJECT_NAME}-quota
+  spec:
+    hard:
+      pods: 10
+      requests.cpu: 4000m
+      requests.memory: 8Gi
+      resourcequotas: 1
+      requests.storage: 50Gi
+      persistentvolumeclaims: 5
+- apiVersion: v1
+  kind: LimitRange
+  metadata:
+    name: \${PROJECT_NAME}-limits
+    creationTimestamp: null
+  spec:
+    limits:
+      -
+        type: Container
+        max:
+          cpu: 4000m
+          memory: 1024Mi
+        min:
+          cpu: 10m
+          memory: 5Mi
+        default:
+          cpu: 4000m
+          memory: 1024Mi
+        defaultRequest:
+          cpu: 100m
+          memory: 512Mi
+- apiVersion: v1
+  groupNames:
+  - system:serviceaccounts:\${PROJECT_NAME}
+  kind: RoleBinding
+  metadata:
+    creationTimestamp: null
+    name: system:image-pullers
+    namespace: \${PROJECT_NAME}
+  roleRef:
+    name: system:image-puller
+  subjects:
+  - kind: SystemGroup
+    name: system:serviceaccounts:${PROJECT_NAME}
+  userNames: null
+- apiVersion: v1
+  groupNames: null
+  kind: RoleBinding
+  metadata:
+    creationTimestamp: null
+    name: system:image-builders
+    namespace: \${PROJECT_NAME}
+  roleRef:
+    name: system:image-builder
+  subjects:
+  - kind: ServiceAccount
+    name: builder
+  userNames:
+  - system:serviceaccount:\${PROJECT_NAME}:builder
+- apiVersion: v1
+  groupNames: null
+  kind: RoleBinding
+  metadata:
+    creationTimestamp: null
+    name: system:deployers
+    namespace: \${PROJECT_NAME}
+  roleRef:
+    name: system:deployer
+  subjects:
+  - kind: ServiceAccount
+    name: deployer
+  userNames:
+  - system:serviceaccount:\${PROJECT_NAME}:deployer
+- apiVersion: v1
+  groupNames: null
+  kind: RoleBinding
+  metadata:
+    creationTimestamp: null
+    name: admin
+    namespace: \${PROJECT_NAME}
+  roleRef:
+    name: admin
+  subjects:
+  - kind: User
+    name: \${PROJECT_ADMIN_USER}
+  userNames:
+  - \${PROJECT_ADMIN_USER}
+parameters:
+- name: PROJECT_NAME
+- name: PROJECT_DISPLAYNAME
+- name: PROJECT_DESCRIPTION
+- name: PROJECT_ADMIN_USER
+- name: PROJECT_REQUESTING_USER
 ----
+
+
+
+
+
 
 Please take note that there are two new sections added: *ResourceQuota* and
 *LimitRange*.
@@ -245,7 +361,7 @@ Go ahead and execute the following:
 
 [source,bash,role="execute"]
 ----
-oc create -f {{ HOME_PATH }}/support/project_request_template.yaml -n openshift-config
+oc create -f project_request_template.yaml -n openshift-config
 ----
 
 This will create the *Template* object in the `openshift-config` *Project*.
@@ -285,8 +401,9 @@ cluster with the "stock" settings. To add the default project request
 tempalate configuration, a CR needs to be created. The
 *CustomResource* will look like:
 
-[source,yaml]
+[source,bash,role="execute"]
 ----
+cat <<EOF > cr_project_request.yaml
 apiVersion: "config.openshift.io/v1"
 kind: "Project"
 metadata:
@@ -307,7 +424,7 @@ changes. To create the *CustomResource*, issue this command:
 
 [source,bash,role="execute"]
 ----
-oc apply -f {{ HOME_PATH }}/support/cr_project_request.yaml -n openshift-config
+oc apply -f cr_project_request.yaml -n openshift-config
 ----
 
 Once this command is run, the OpenShift API Server configurations will be

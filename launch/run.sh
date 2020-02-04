@@ -1,4 +1,6 @@
 #!/bin/bash
+WORKSHOP_NAME="ocp-administration"
+
 USERCOUNT=25
 
 RUN_PREREQUISITES=false
@@ -29,38 +31,41 @@ then
     echo "**********************"
     echo ""
 
+
+    export SYSTEM_ADMIN_PASS="redhat"
+
+
     echo "Configure authentication"
     cd prerequisites/authentication/  ; chmod +x run.sh ; ./run.sh ; cd ../..
     sleep 15
     oc login -u clusteradmin -p redhat
 
-    if [ $MULTIUSER = true ]
-    then
+#    if [ $MULTIUSER = true ]
+#    then
     echo "Configure NFS autoprovisioner (not supported, only for PoC)"
     cd prerequisites/nfs-autoprovisioner/  ; chmod +x run.sh ; ./run.sh ; cd ../..
-    fi
-
-   
-fi
-
-
-
-
-
-if [ $MULTIUSER = true ]
-then
-  echo "Create projects to run the workshop"
-
-  for i in $(eval echo "{1..$USERCOUNT}") ; do
-    oc login -u user$i -p redhat  > /dev/null 2>&1
-    oc login -u clusteradmin -p redhat > /dev/null 2>&1
-    oc new-project workshop-knative-intro-user$i > /dev/null 2>&1
-    oc adm policy add-role-to-user admin user$i -n workshop-knative-intro-user$i
-    #oc adm policy add-role-to-user admin user$i -n workshop-knative-intro-content
-  done
+#    fi
 
 
 fi
+
+
+
+
+
+#if [ $MULTIUSER = true ]
+#then
+#  echo "Create projects to run the workshop"
+
+#  for i in $(eval echo "{1..$USERCOUNT}") ; do
+#    oc login -u user$i -p redhat  > /dev/null 2>&1
+#    oc login -u clusteradmin -p redhat > /dev/null 2>&1
+#    oc new-project workshop-${WORKSHOP_NAME}-user$i > /dev/null 2>&1
+#    oc adm policy add-role-to-user admin user$i -n workshop-${WORKSHOP_NAME}-user$i
+#    #oc adm policy add-role-to-user admin user$i -n workshop-${WORKSHOP_NAME}-content
+#  done
+
+#fi
 
 
 
@@ -68,7 +73,16 @@ fi
 echo "Building and deploying workshop"
 cd ..
 
-oc new-project workshop-knative-intro-content
+#echo "Adding environment vars"
+
+#SYSTEM_ADMIN_PASS=$(cat ~${OCP_INSTALL_PATH}/auth/kubeadmin-password)
+
+#echo"      - name: SYSTEMADMINPASS" >> workshop/modules.yaml
+#echo"        value: ${SYSTEM_ADMIN_PASS}" >> workshop/modules.yaml
+
+
+
+oc new-project workshop-${WORKSHOP_NAME}-content
 
 if [ $MULTIUSER = true ]
 then
@@ -89,7 +103,7 @@ oc rollout status $(oc get dc -o name)
 sleep 10
 
 
-WORKSHOP_URL=$(oc get routes.route.openshift.io  | grep lab | awk '{print $2}')
+WORKSHOP_URL=$(oc get routes.route.openshift.io -n workshop-${WORKSHOP_NAME}-content | grep ${WORKSHOP_NAME} | awk '{print $2}')
 
 echo ""
 echo ""

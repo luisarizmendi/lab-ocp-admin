@@ -1,21 +1,10 @@
 ## Environment Overview
 
-You will be interacting with an OpenShift 4 cluster that is running on {{
-ENVIRONMENT }}. During the lab you will also install OpenShift Container
+You will be interacting with an OpenShift 4 cluster. During the lab you will also install OpenShift Container
 Storage, based on Rook/Ceph.
 
 The basics of the OpenShift 4 installation have been completed in advance.
-The OpenShift cluster is essentially set to all defaults and looks like the
-following:
 
-* 3 master nodes
-* 3 worker nodes
-* 1 bastion host
-
-link:https://github.com/openshift-labs/workshop-dashboard[Homeroom] is a
-solution that provides this integrated lab guide, terminal, and web console
-pane. It is actually running inside the cluster that you will be interacting
-with.
 
 ## Conventions
 You will see various code and command blocks throughout these exercises. Some of
